@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LastMile Labor</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div id="header">
+  <div class="logo">🚛 <span>LastMile</span> Labor</div>
+  <div style="font-size:11px;color:#8b949e;margin-left:8px">배송 노동 가시화 · ABM</div>
+  <div id="conn-label" style="margin-left:auto;font-size:10px;color:#8b949e">연결 중...</div>
+  <div class="conn-dot" id="conn-dot"></div>
+</div>
+
+<!-- 메인 -->
+<div id="main">
+
+  <!-- 지도 -->
+  <div style="position:relative;overflow:hidden">
+    <div id="map"></div>
+    <div id="status-bar" style="color:#8b949e">▶ 파라미터 탭에서 설정 후 실행하세요</div>
+  </div>
+
+  <!-- 오른쪽 패널 -->
+  <div id="panel">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('status')">📊 현황</button>
+      <button class="tab-btn"        onclick="switchTab('params')">⚙️ 파라미터</button>
+      <button class="tab-btn"        onclick="switchTab('env')">🗺️ 환경</button>
+    </div>
+
+    <!-- 현황 탭 -->
+    <div class="tab-pane active" id="tab-status">
+      <div class="summary-grid">
+        <div class="metric-card">
+          <div class="metric-val" id="m-active" style="color:#238636">0</div>
+          <div class="metric-lbl">🚛 가동 중</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" id="m-over" style="color:#f85149">0</div>
+          <div class="metric-lbl">⛔ 시간초과</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" id="m-done" style="color:#388bfd">0</div>
+          <div class="metric-lbl">📦 완료</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" id="m-remain" style="color:#d29922">0</div>
+          <div class="metric-lbl">🕐 잔여</div>
+        </div>
+      </div>
+
+      <!-- 전체 진행률 -->
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#8b949e;margin-bottom:4px">
+          <span>전체 진행률</span><span id="pct-label">0%</span>
+        </div>
+        <div class="prog-wrap">
+          <div class="prog-bar" id="total-prog" style="width:0%;background:#388bfd"></div>
+        </div>
+      </div>
+
+      <div id="alert-box">⚠️ <span id="alert-txt"></span></div>
+
+      <div class="sec-lbl">배달원 현황</div>
+      <div id="driver-list"></div>
+    </div>
+
+    <!-- 파라미터 탭 -->
+    <div class="tab-pane" id="tab-params">
+      <div class="sec-lbl">DRIVER AGENT</div>
+      <div class="param-group">
+        <div class="param-label">
+          법정 최대 근무
+          <select id="p-maxhours" onchange="onParamChange()">
+            <option value="8">8시간</option>
+            <option value="12">12시간</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sec-lbl">COMPANY AGENT</div>
+      <div class="param-group">
+        <div class="param-label">기사 수 <span class="param-val" id="lbl-drivers">8명</span></div>
+        <input type="range" id="p-drivers" min="3" max="14" value="8"
+               oninput="document.getElementById('lbl-drivers').textContent=this.value+'명'"
+               onchange="onParamChange()">
+      </div>
+      <div class="param-group">
+        <div class="param-label">총 물동량 <span class="param-val" id="lbl-volume">120건</span></div>
+        <input type="range" id="p-volume" min="40" max="220" value="120" step="10"
+               oninput="document.getElementById('lbl-volume').textContent=this.value+'건'"
+               onchange="onParamChange()">
+      </div>
+
+      <div class="sec-lbl">피로도 함수</div>
+      <div class="info-box">
+        근무 0~3h → 건당 <span class="g">3분</span><br>
+        근무 3~6h → 건당 <span class="y">5분</span><br>
+        근무 6h+  → 건당 <span class="r">7분</span><br>
+        경사 15°+ → <span class="y">×2배</span> &nbsp;/&nbsp; 경사 25°+ → <span class="r">×3배</span>
+      </div>
+
+      <div style="margin-top:auto;padding-top:12px">
+        <button class="btn btn-primary" id="btn-run" onclick="onRunClick()">▶ 실행</button>
+        <button class="btn btn-secondary" onclick="onReset()">↺ 초기화</button>
+      </div>
+    </div>
+
+    <!-- 환경 탭 -->
+    <div class="tab-pane" id="tab-env">
+      <div class="sec-lbl">ENVIRONMENT AGENT · 도로 데이터</div>
+      <div style="font-size:10px;color:#8b949e;line-height:1.8;margin-bottom:8px">
+        GeoJSON 업로드 시 실제 도로 기울기·폭 적용.<br>
+        좌표계: EPSG:5181 자동 변환
+      </div>
+      <div id="env-stats" style="background:#0d1117;border:0.5px solid #30363d;border-radius:7px;padding:9px 11px;font-size:11px">
+        <div style="color:#8b949e">데이터 로드 대기 중...</div>
+      </div>
+      <div class="info-box" style="margin-top:8px">
+        폭 &gt; 2m → 🚛 트럭 운행<br>
+        폭 ≤ 2m → 🚶 도보 강제전환 (×1.5+)<br>
+        경사 15°+ → ⏱ ×2 &nbsp;/&nbsp; 경사 25°+ → ⏱ ×3
+      </div>
+
+      <!-- 범례 -->
+      <div class="sec-lbl" style="margin-top:8px">도로 범례</div>
+      <div style="font-size:10px;color:#8b949e;line-height:2">
+        <span style="color:#238636">━</span> 평지 (경사 &lt;15°)<br>
+        <span style="color:#d29922">━</span> 경사 15~25° · 도보전환<br>
+        <span style="color:#f85149">━</span> 경사 25°+ · 시간 ×3<br>
+        <span style="color:#30363d">╌</span> 협로 (폭 ≤2m) · 트럭불가<br>
+        🚛 운행 중 &nbsp;/&nbsp; 🚶 도보 중 &nbsp;/&nbsp; 🏠 퇴근
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

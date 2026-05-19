@@ -10,15 +10,13 @@
 </head>
 <body>
 
-<!-- 헤더 -->
 <div id="header">
   <div class="logo">🚛 <span>LastMile</span> Labor</div>
   <div style="font-size:11px;color:#8b949e;margin-left:8px">배송 노동 가시화 · ABM</div>
-  <div id="conn-label" style="margin-left:auto;font-size:10px;color:#8b949e">연결 중...</div>
+  <div id="conn-lbl" style="margin-left:auto;font-size:10px;color:#8b949e">연결 중...</div>
   <div class="conn-dot" id="conn-dot"></div>
 </div>
 
-<!-- 메인 -->
 <div id="main">
 
   <!-- 지도 -->
@@ -37,108 +35,145 @@
 
     <!-- 현황 탭 -->
     <div class="tab-pane active" id="tab-status">
-      <div class="summary-grid">
-        <div class="metric-card">
-          <div class="metric-val" id="m-active" style="color:#238636">0</div>
-          <div class="metric-lbl">🚛 가동 중</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-val" id="m-over" style="color:#f85149">0</div>
-          <div class="metric-lbl">⛔ 시간초과</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-val" id="m-done" style="color:#388bfd">0</div>
-          <div class="metric-lbl">📦 완료</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-val" id="m-remain" style="color:#d29922">0</div>
-          <div class="metric-lbl">🕐 잔여</div>
-        </div>
+      <div class="metric-grid">
+        <div class="metric"><div class="mv" id="m-active" style="color:#238636">0</div><div class="ml">🚛 가동 중</div></div>
+        <div class="metric"><div class="mv" id="m-over"   style="color:#f85149">0</div><div class="ml">⛔ 시간초과</div></div>
+        <div class="metric"><div class="mv" id="m-done"   style="color:#388bfd">0</div><div class="ml">📦 완료</div></div>
+        <div class="metric"><div class="mv" id="m-walk"   style="color:#f0883e">0</div><div class="ml">🚶 도보</div></div>
       </div>
-
-      <!-- 전체 진행률 -->
       <div>
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:#8b949e;margin-bottom:4px">
-          <span>전체 진행률</span><span id="pct-label">0%</span>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#8b949e">
+          <span>전체 진행률</span><span id="pct-lbl">0%</span>
         </div>
-        <div class="prog-wrap">
-          <div class="prog-bar" id="total-prog" style="width:0%;background:#388bfd"></div>
+        <div style="background:#21262d;border-radius:3px;height:5px;margin:4px 0">
+          <div id="prog-bar" style="width:0%;background:#388bfd;border-radius:3px;height:5px;transition:width .3s"></div>
         </div>
       </div>
-
-      <div id="alert-box">⚠️ <span id="alert-txt"></span></div>
-
-      <div class="sec-lbl">배달원 현황</div>
-      <div id="driver-list"></div>
+      <div id="alert-box" style="display:none;background:#130a0a;border:0.5px solid #f85149;border-radius:6px;padding:6px 9px;font-size:11px;color:#f85149">
+        ⚠️ <span id="alert-txt"></span>
+      </div>
+      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin:4px 0 3px">배달원 현황</div>
+      <div id="driver-list"><div style="color:#8b949e;font-size:11px;text-align:center;margin-top:16px">실행 후 표시됩니다</div></div>
     </div>
 
     <!-- 파라미터 탭 -->
     <div class="tab-pane" id="tab-params">
-      <div class="sec-lbl">DRIVER AGENT</div>
-      <div class="param-group">
-        <div class="param-label">
-          법정 최대 근무
-          <select id="p-maxhours" onchange="onParamChange()">
-            <option value="8">8시간</option>
-            <option value="12">12시간</option>
-          </select>
+      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin-bottom:8px">DRIVER AGENT</div>
+
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:#c9d1d9;margin-bottom:5px">법정 최대 근무</div>
+        <select id="p-hours" onchange="onParamChange()" style="width:100%;background:#21262d;border:0.5px solid #30363d;border-radius:6px;color:#e6edf3;font-size:12px;padding:7px 8px">
+          <option value="8">8시간</option>
+          <option value="12">12시간</option>
+        </select>
+      </div>
+
+      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin-bottom:8px">COMPANY AGENT</div>
+
+      <!-- 기사 수: 슬라이더 + 숫자 입력 -->
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#c9d1d9;margin-bottom:5px">
+          <span>기사 수</span>
+          <input type="number" id="n-drivers" value="8" min="3" max="12"
+            style="width:56px;background:#21262d;border:0.5px solid #30363d;border-radius:5px;color:#388bfd;font-size:12px;font-weight:500;text-align:center;padding:3px 4px">
         </div>
+        <input type="range" id="p-drivers" min="3" max="12" value="8">
       </div>
 
-      <div class="sec-lbl">COMPANY AGENT</div>
-      <div class="param-group">
-        <div class="param-label">기사 수 <span class="param-val" id="lbl-drivers">8명</span></div>
-        <input type="range" id="p-drivers" min="3" max="14" value="8"
-               oninput="document.getElementById('lbl-drivers').textContent=this.value+'명'"
-               onchange="onParamChange()">
-      </div>
-      <div class="param-group">
-        <div class="param-label">총 물동량 <span class="param-val" id="lbl-volume">120건</span></div>
-        <input type="range" id="p-volume" min="40" max="220" value="120" step="10"
-               oninput="document.getElementById('lbl-volume').textContent=this.value+'건'"
-               onchange="onParamChange()">
+      <!-- 물동량: 슬라이더 + 숫자 입력 -->
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#c9d1d9;margin-bottom:5px">
+          <span>총 물동량</span>
+          <input type="number" id="n-vol" value="120" min="40" max="200" step="10"
+            style="width:56px;background:#21262d;border:0.5px solid #30363d;border-radius:5px;color:#388bfd;font-size:12px;font-weight:500;text-align:center;padding:3px 4px">
+        </div>
+        <input type="range" id="p-vol" min="40" max="200" value="120" step="10">
       </div>
 
-      <div class="sec-lbl">피로도 함수</div>
-      <div class="info-box">
-        근무 0~3h → 건당 <span class="g">3분</span><br>
-        근무 3~6h → 건당 <span class="y">5분</span><br>
-        근무 6h+  → 건당 <span class="r">7분</span><br>
-        경사 15°+ → <span class="y">×2배</span> &nbsp;/&nbsp; 경사 25°+ → <span class="r">×3배</span>
+      <!-- 피로도 인포 -->
+      <div style="background:#0d1117;border:0.5px solid #30363d;border-radius:7px;padding:9px 11px;font-size:10px;color:#8b949e;line-height:2.1;margin-bottom:14px">
+        근무 0~3h → 건당 <span style="color:#238636;font-weight:500">3분</span><br>
+        근무 3~6h → 건당 <span style="color:#d29922;font-weight:500">5분</span><br>
+        근무 6h+  → 건당 <span style="color:#f85149;font-weight:500">7분</span><br>
+        경사 15°+ → <span style="color:#d29922">×2배</span> &nbsp;/&nbsp; 경사 25°+ → <span style="color:#f85149">×3배</span>
       </div>
 
-      <div style="margin-top:auto;padding-top:12px">
-        <button class="btn btn-primary" id="btn-run" onclick="onRunClick()">▶ 실행</button>
-        <button class="btn btn-secondary" onclick="onReset()">↺ 초기화</button>
+      <div style="margin-top:auto">
+        <button id="btn-run" onclick="onRun()"
+          style="width:100%;padding:9px;background:#1f6feb;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;margin-bottom:6px;transition:background .15s">
+          ▶ 실행
+        </button>
+        <button onclick="onReset()"
+          style="width:100%;padding:8px;background:#21262d;color:#8b949e;border:0.5px solid #30363d;border-radius:7px;font-size:12px;cursor:pointer">
+          ↺ 초기화
+        </button>
       </div>
     </div>
 
     <!-- 환경 탭 -->
     <div class="tab-pane" id="tab-env">
-      <div class="sec-lbl">ENVIRONMENT AGENT · 도로 데이터</div>
-      <div style="font-size:10px;color:#8b949e;line-height:1.8;margin-bottom:8px">
-        GeoJSON 업로드 시 실제 도로 기울기·폭 적용.<br>
-        좌표계: EPSG:5181 자동 변환
-      </div>
-      <div id="env-stats" style="background:#0d1117;border:0.5px solid #30363d;border-radius:7px;padding:9px 11px;font-size:11px">
-        <div style="color:#8b949e">데이터 로드 대기 중...</div>
-      </div>
-      <div class="info-box" style="margin-top:8px">
-        폭 &gt; 2m → 🚛 트럭 운행<br>
-        폭 ≤ 2m → 🚶 도보 강제전환 (×1.5+)<br>
-        경사 15°+ → ⏱ ×2 &nbsp;/&nbsp; 경사 25°+ → ⏱ ×3
+      <!-- GeoJSON 업로드 -->
+      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin-bottom:6px">GeoJSON 업로드</div>
+      <div style="font-size:10px;color:#8b949e;line-height:1.7;margin-bottom:8px">
+        GeoJSON 업로드 시 자동 전처리 → 동별 도로 데이터 생성
       </div>
 
-      <!-- 범례 -->
-      <div class="sec-lbl" style="margin-top:8px">도로 범례</div>
-      <div style="font-size:10px;color:#8b949e;line-height:2">
+      <!-- 업로드 드롭존 -->
+      <input type="file" id="geojson-input" accept=".geojson,.json"
+        style="display:none" onchange="onGeoJsonUpload(this)">
+      <div id="upload-zone"
+        onclick="document.getElementById('geojson-input').click()"
+        style="display:block;background:#0d1117;border:0.5px dashed #30363d;border-radius:8px;
+               padding:16px;text-align:center;cursor:pointer;margin-bottom:8px;transition:border-color .15s"
+        onmouseenter="this.style.borderColor='#388bfd'"
+        onmouseleave="this.style.borderColor='#30363d'">
+        <div style="font-size:22px;margin-bottom:6px">📂</div>
+        <div style="font-size:11px;color:#c9d1d9;margin-bottom:3px">클릭하여 GeoJSON 선택</div>
+        <div style="font-size:10px;color:#8b949e">EPSG:5179 좌표계 · .geojson / .json</div>
+      </div>
+
+      <!-- 전처리 진행 상태 -->
+      <div id="prep-status" style="display:none;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#8b949e;margin-bottom:4px">
+          <span id="prep-msg">전처리 중...</span>
+          <span id="prep-pct">0%</span>
+        </div>
+        <div style="background:#21262d;border-radius:3px;height:4px">
+          <div id="prep-bar" style="width:0%;background:#388bfd;border-radius:3px;height:4px;transition:width .3s"></div>
+        </div>
+      </div>
+
+      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin-bottom:6px">구역 선택</div>
+      <div style="font-size:10px;color:#8b949e;line-height:1.7;margin-bottom:8px">
+        구역 선택 시 해당 동으로 지도 이동 + 출·도착지 재랜덤 세팅
+      </div>
+
+      <select id="zone-select" onchange="onZoneChange()"
+        style="width:100%;background:#21262d;border:0.5px solid #30363d;border-radius:6px;color:#e6edf3;font-size:12px;padding:7px 8px;margin-bottom:10px">
+        <option value="" disabled>GeoJSON 업로드 후 선택 가능</option>
+      </select>
+
+      <div id="region-name" style="font-size:11px;color:#388bfd;margin-bottom:8px;font-weight:500"></div>
+
+      <div id="env-stats" style="background:#0d1117;border:0.5px solid #30363d;border-radius:7px;padding:9px 10px;margin-bottom:10px">
+        <div style="color:#8b949e;font-size:11px">GeoJSON 업로드 후 표시됩니다</div>
+      </div>
+
+      <div style="background:#0d1117;border:0.5px solid #30363d;border-radius:7px;padding:9px 11px;font-size:10px;color:#8b949e;line-height:2.1">
+        폭 &gt; 2m → 🚛 트럭 운행<br>
+        폭 ≤ 2m → 🚶 도보 강제전환<br>
+        경사 15°+ → ⏱ ×2배 &nbsp;/&nbsp; 경사 25°+ → ⏱ ×3배
+      </div>
+
+      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin:10px 0 5px">도로 범례</div>
+      <div style="font-size:10px;color:#8b949e;line-height:2.1">
         <span style="color:#238636">━</span> 평지 (경사 &lt;15°)<br>
-        <span style="color:#d29922">━</span> 경사 15~25° · 도보전환<br>
-        <span style="color:#f85149">━</span> 경사 25°+ · 시간 ×3<br>
-        <span style="color:#30363d">╌</span> 협로 (폭 ≤2m) · 트럭불가<br>
-        🚛 운행 중 &nbsp;/&nbsp; 🚶 도보 중 &nbsp;/&nbsp; 🏠 퇴근
+        <span style="color:#d29922">━</span> 경사 15~25°<br>
+        <span style="color:#f85149">━</span> 경사 25°+ 급경사<br>
+        <span style="color:#555">╌</span> 협로 (폭 ≤2m)
       </div>
     </div>
+
   </div>
 </div>
 

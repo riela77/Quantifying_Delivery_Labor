@@ -1,0 +1,338 @@
+[
+  {
+    "name": "난곡동",
+    "file": "난곡동.json",
+    "center": [
+      37.46964,
+      126.931
+    ],
+    "bounds": [
+      37.463,
+      126.92,
+      37.475,
+      126.94
+    ],
+    "stats": {
+      "total_nodes": 6356,
+      "total_edges": 6741,
+      "hard_nodes": 2651,
+      "narrow_pct": 38.9,
+      "steep_pct": 1.6
+    }
+  },
+  {
+    "name": "난향동",
+    "file": "난향동.json",
+    "center": [
+      37.47043,
+      126.94436
+    ],
+    "bounds": [
+      37.463,
+      126.94,
+      37.475,
+      126.955
+    ],
+    "stats": {
+      "total_nodes": 1345,
+      "total_edges": 1358,
+      "hard_nodes": 416,
+      "narrow_pct": 21.4,
+      "steep_pct": 6.1
+    }
+  },
+  {
+    "name": "신림동",
+    "file": "신림동.json",
+    "center": [
+      37.47845,
+      126.92056
+    ],
+    "bounds": [
+      37.47,
+      126.91,
+      37.485,
+      126.93
+    ],
+    "stats": {
+      "total_nodes": 7842,
+      "total_edges": 8243,
+      "hard_nodes": 1676,
+      "narrow_pct": 18.9,
+      "steep_pct": 1.0
+    }
+  },
+  {
+    "name": "신사동",
+    "file": "신사동.json",
+    "center": [
+      37.4781,
+      126.93895
+    ],
+    "bounds": [
+      37.47,
+      126.93,
+      37.485,
+      126.95
+    ],
+    "stats": {
+      "total_nodes": 8452,
+      "total_edges": 8975,
+      "hard_nodes": 2382,
+      "narrow_pct": 25.4,
+      "steep_pct": 1.2
+    }
+  },
+  {
+    "name": "조원동",
+    "file": "조원동.json",
+    "center": [
+      37.46507,
+      126.92063
+    ],
+    "bounds": [
+      37.455,
+      126.91,
+      37.47,
+      126.93
+    ],
+    "stats": {
+      "total_nodes": 2840,
+      "total_edges": 2924,
+      "hard_nodes": 1381,
+      "narrow_pct": 43.6,
+      "steep_pct": 3.8
+    }
+  },
+  {
+    "name": "서원동",
+    "file": "서원동.json",
+    "center": [
+      37.46582,
+      126.93638
+    ],
+    "bounds": [
+      37.455,
+      126.93,
+      37.47,
+      126.95
+    ],
+    "stats": {
+      "total_nodes": 3653,
+      "total_edges": 3810,
+      "hard_nodes": 1269,
+      "narrow_pct": 31.3,
+      "steep_pct": 2.2
+    }
+  },
+  {
+    "name": "중앙동",
+    "file": "중앙동.json",
+    "center": [
+      37.48493,
+      126.92977
+    ],
+    "bounds": [
+      37.478,
+      126.92,
+      37.492,
+      126.94
+    ],
+    "stats": {
+      "total_nodes": 9155,
+      "total_edges": 9715,
+      "hard_nodes": 2251,
+      "narrow_pct": 22.0,
+      "steep_pct": 0.8
+    }
+  },
+  {
+    "name": "청룡동",
+    "file": "청룡동.json",
+    "center": [
+      37.48442,
+      126.95009
+    ],
+    "bounds": [
+      37.478,
+      126.94,
+      37.492,
+      126.96
+    ],
+    "stats": {
+      "total_nodes": 8528,
+      "total_edges": 8964,
+      "hard_nodes": 2750,
+      "narrow_pct": 29.4,
+      "steep_pct": 1.1
+    }
+  },
+  {
+    "name": "성현동",
+    "file": "성현동.json",
+    "center": [
+      37.48395,
+      126.97017
+    ],
+    "bounds": [
+      37.478,
+      126.96,
+      37.492,
+      126.978
+    ],
+    "stats": {
+      "total_nodes": 5329,
+      "total_edges": 5513,
+      "hard_nodes": 1208,
+      "narrow_pct": 18.8,
+      "steep_pct": 2.3
+    }
+  },
+  {
+    "name": "행운동",
+    "file": "행운동.json",
+    "center": [
+      37.47472,
+      126.95885
+    ],
+    "bounds": [
+      37.462,
+      126.95,
+      37.478,
+      126.965
+    ],
+    "stats": {
+      "total_nodes": 2097,
+      "total_edges": 2149,
+      "hard_nodes": 365,
+      "narrow_pct": 15.7,
+      "steep_pct": 0.7
+    }
+  },
+  {
+    "name": "낙성대동",
+    "file": "낙성대동.json",
+    "center": [
+      37.4738,
+      126.97186
+    ],
+    "bounds": [
+      37.462,
+      126.965,
+      37.478,
+      126.98
+    ],
+    "stats": {
+      "total_nodes": 3539,
+      "total_edges": 3665,
+      "hard_nodes": 410,
+      "narrow_pct": 7.8,
+      "steep_pct": 1.9
+    }
+  },
+  {
+    "name": "인헌동",
+    "file": "인헌동.json",
+    "center": [
+      37.4848,
+      126.98486
+    ],
+    "bounds": [
+      37.478,
+      126.978,
+      37.492,
+      126.992
+    ],
+    "stats": {
+      "total_nodes": 5993,
+      "total_edges": 6272,
+      "hard_nodes": 743,
+      "narrow_pct": 11.5,
+      "steep_pct": 0.2
+    }
+  },
+  {
+    "name": "남현동",
+    "file": "남현동.json",
+    "center": [
+      37.49278,
+      126.97144
+    ],
+    "bounds": [
+      37.49,
+      126.96,
+      37.505,
+      126.982
+    ],
+    "stats": {
+      "total_nodes": 1809,
+      "total_edges": 1832,
+      "hard_nodes": 849,
+      "narrow_pct": 41.8,
+      "steep_pct": 4.6
+    }
+  },
+  {
+    "name": "봉천동",
+    "file": "봉천동.json",
+    "center": [
+      37.49554,
+      126.94629
+    ],
+    "bounds": [
+      37.49,
+      126.935,
+      37.507,
+      126.96
+    ],
+    "stats": {
+      "total_nodes": 4420,
+      "total_edges": 4519,
+      "hard_nodes": 1367,
+      "narrow_pct": 24.7,
+      "steep_pct": 4.8
+    }
+  },
+  {
+    "name": "은천동",
+    "file": "은천동.json",
+    "center": [
+      37.49553,
+      126.92493
+    ],
+    "bounds": [
+      37.49,
+      126.91,
+      37.507,
+      126.935
+    ],
+    "stats": {
+      "total_nodes": 5776,
+      "total_edges": 5940,
+      "hard_nodes": 1536,
+      "narrow_pct": 25.0,
+      "steep_pct": 0.4
+    }
+  },
+  {
+    "name": "관악구 전체",
+    "file": "관악구_전체.json",
+    "center": [
+      37.47944,
+      126.93561
+    ],
+    "bounds": [
+      37.44,
+      126.88,
+      37.515,
+      126.998
+    ],
+    "stats": {
+      "total_nodes": 94374,
+      "total_edges": 99135,
+      "hard_nodes": 23116,
+      "narrow_pct": 22.0,
+      "steep_pct": 1.2
+    }
+  }
+]

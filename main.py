@@ -9,6 +9,10 @@ from agents.simulation import DeliveryModel
 
 app = FastAPI()
 
+# ── 라이더 앱 API 마운트 ──────────────────────────────────────
+from rider_api import rider_router
+app.include_router(rider_router, prefix="/rider")
+
 env     = EnvironmentAgent()
 model:  Optional[DeliveryModel] = None
 running = False
@@ -236,7 +240,7 @@ async def _handle(msg: dict, ws: WebSocket):
         running = False; model = None
         snap = make_snapshot(include_map=True)
         snap["type"] = "zone_changed"
-        await ws.send_text(json.dumps(snap))
+        await ws.send_text(json.dumps(snap, ensure_ascii=False))
 
     elif action == "update_params":
         for k in ["max_legal_hours", "n_drivers", "daily_volume"]:

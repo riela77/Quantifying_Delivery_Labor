@@ -2,181 +2,466 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LastMile Labor</title>
-<link rel="stylesheet" href="/static/style.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>SafeRoute</title>
+<style>
+/* ── 리셋 & 기본 ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { height: 100%; }
+body {
+  height: 100%; width: 100%; max-width: 430px; margin: 0 auto;
+  background: #1a1a2e; color: #fff;
+  font-family: -apple-system, 'Apple SD Gothic Neo', BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+  overflow: hidden; position: relative;
+  /* 폰 느낌을 위한 그림자 */
+  box-shadow: 0 0 60px rgba(0,0,0,.8);
+}
+
+/* ── 상태바 (아이폰 느낌) ── */
+.status-bar {
+  position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 430px; z-index: 1000;
+  height: 44px; background: transparent;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px;
+  pointer-events: none;
+}
+.status-bar-time { font-size: 15px; font-weight: 600; color: #fff; }
+.status-bar-icons { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #fff; }
+
+/* ── 화면 컨테이너 ── */
+#screens { position: fixed; inset: 0; max-width: 430px; left: 50%; transform: translateX(-50%); }
+.screen { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.screen.active { opacity: 1; pointer-events: all; }
+
+/* ══════════════════════════════════════════
+   대기 화면
+══════════════════════════════════════════ */
+#screen-standby { background: #1a1a2e; }
+
+/* TMap */
+#tmap-wrap { position: absolute; inset: 0; }
+
+/* 상단 바 */
+.app-topbar {
+  position: absolute; top: 44px; left: 0; right: 0; z-index: 200;
+  padding: 10px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.online-toggle {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(0,0,0,.65); backdrop-filter: blur(10px);
+  border-radius: 20px; padding: 8px 14px;
+}
+.toggle-dot { width: 10px; height: 10px; border-radius: 50%; background: #34c759; }
+.toggle-label { font-size: 13px; font-weight: 600; color: #fff; }
+.earnings-pill {
+  background: rgba(0,0,0,.65); backdrop-filter: blur(10px);
+  border-radius: 20px; padding: 8px 14px;
+  font-size: 13px; font-weight: 600; color: #34c759;
+}
+
+/* 동 선택 */
+.dong-pill {
+  position: absolute; top: 104px; left: 16px; right: 16px; z-index: 200;
+}
+.dong-pill select {
+  width: 100%; background: rgba(0,0,0,.65); backdrop-filter: blur(10px);
+  border: none; border-radius: 12px; color: #fff;
+  font-size: 14px; font-weight: 500; padding: 11px 14px;
+  -webkit-appearance: none; outline: none;
+}
+
+/* 콜 시뮬 버튼 */
+.call-sim-btn {
+  position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%);
+  z-index: 200;
+  background: #00C896; border: none; border-radius: 24px;
+  color: #fff; font-size: 15px; font-weight: 700;
+  padding: 14px 32px; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,200,150,.4);
+  white-space: nowrap;
+}
+
+/* 하단 탭 */
+.bottom-tab {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 200;
+  background: rgba(20,20,35,.97); backdrop-filter: blur(20px);
+  border-top: .5px solid rgba(255,255,255,.1);
+  height: 88px; display: flex; align-items: flex-start;
+  padding-top: 10px;
+}
+.tab-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: none; border: none; color: rgba(255,255,255,.4);
+  font-size: 10px; cursor: pointer; padding-top: 2px;
+}
+.tab-item.active { color: #00C896; }
+.tab-icon { font-size: 22px; }
+
+/* ══════════════════════════════════════════
+   콜 오버레이 (지도 위에 떠있는 카드)
+══════════════════════════════════════════ */
+#call-overlay { 
+  position: absolute; inset: 0; z-index: 500; pointer-events: none;
+  opacity: 0; transition: opacity .2s;
+}
+#call-overlay.visible { opacity: 1; pointer-events: all; }
+
+/* 콜 미니 카드 (기본 상태 — 지도 아래쪽에 슬라이드 업) */
+.call-mini-card {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(15,15,25,.97); backdrop-filter: blur(20px);
+  border-radius: 24px 24px 0 0;
+  border-top: .5px solid rgba(255,255,255,.12);
+  padding: 12px 20px 100px;
+  transform: translateY(100%);
+  transition: transform .35s cubic-bezier(.25,.8,.25,1);
+}
+.call-mini-card.show { transform: translateY(0); }
+
+/* 드래그 핸들 */
+.drag-handle {
+  width: 36px; height: 4px; background: rgba(255,255,255,.2);
+  border-radius: 2px; margin: 0 auto 14px;
+}
+
+/* 타이머 행 */
+.call-timer-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.call-new-badge {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 700; color: #fff;
+}
+.bell-icon { animation: bell .5s ease infinite alternate; font-size: 18px; }
+@keyframes bell { from{transform:rotate(-12deg)} to{transform:rotate(12deg)} }
+.hard-badge {
+  background: #ff3b30; border-radius: 8px;
+  padding: 3px 8px; font-size: 11px; font-weight: 700; color: #fff;
+}
+
+/* 타이머 원 */
+.timer-ring { position: relative; width: 44px; height: 44px; }
+.timer-ring svg { position: absolute; inset: 0; }
+.timer-ring-num {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: #fff;
+}
+
+/* 포인트 요약 행 */
+.points-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.point-chip {
+  flex: 1; background: rgba(255,255,255,.07); border-radius: 12px;
+  padding: 10px 12px; cursor: pointer; transition: background .15s;
+  border: 1.5px solid transparent;
+}
+.point-chip:active { background: rgba(255,255,255,.14); }
+.point-chip.selected { border-color: rgba(255,255,255,.3); }
+.chip-label { font-size: 10px; color: rgba(255,255,255,.5); margin-bottom: 3px; }
+.chip-name { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip-dist { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 2px; }
+
+/* 세부 정보 패널 (포인트 탭 시 확장) */
+.detail-panel {
+  background: rgba(255,255,255,.05); border-radius: 14px;
+  padding: 14px; margin-bottom: 14px;
+  max-height: 0; overflow: hidden;
+  transition: max-height .3s ease, padding .3s;
+}
+.detail-panel.open { max-height: 300px; }
+.detail-panel.closed { padding-top: 0; padding-bottom: 0; }
+
+.detail-compare {
+  display: flex; gap: 8px; margin-bottom: 10px;
+}
+.dc-item { flex: 1; text-align: center; }
+.dc-item.real { background: rgba(0,200,150,.1); border-radius: 10px; padding: 8px 4px; }
+.dc-lbl { font-size: 10px; color: rgba(255,255,255,.45); margin-bottom: 3px; }
+.dc-val { font-size: 20px; font-weight: 700; }
+.dc-val.gray { color: rgba(255,255,255,.45); }
+.dc-val.teal { color: #00C896; }
+.dc-sub { font-size: 10px; color: rgba(255,255,255,.35); margin-top: 2px; }
+.detail-arrow { align-self: center; color: rgba(255,255,255,.2); font-size: 16px; }
+
+.warn-row {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,59,48,.1); border-radius: 8px;
+  padding: 7px 10px; margin-bottom: 6px;
+  font-size: 11px; color: #ff6b6b;
+}
+
+/* 배달료 요약 */
+.fare-summary-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.fare-total-label { font-size: 13px; color: rgba(255,255,255,.6); }
+.fare-total-val { font-size: 22px; font-weight: 800; color: #00C896; }
+.fare-platform-val { font-size: 12px; color: rgba(255,255,255,.35); text-decoration: line-through; }
+
+/* 버튼 행 */
+.btn-row { display: flex; gap: 10px; }
+.btn-reject {
+  flex: 1; background: rgba(255,255,255,.08); border: none; border-radius: 14px;
+  color: rgba(255,255,255,.7); font-size: 14px; font-weight: 600;
+  padding: 15px; cursor: pointer;
+}
+.btn-accept {
+  flex: 2; background: #00C896; border: none; border-radius: 14px;
+  color: #fff; font-size: 14px; font-weight: 700;
+  padding: 15px; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,200,150,.35);
+}
+
+/* ══════════════════════════════════════════
+   내비 화면
+══════════════════════════════════════════ */
+#screen-nav { background: #1a1a2e; }
+#nav-map-wrap { position: absolute; inset: 0; }
+.nav-bottom {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 200;
+  background: rgba(15,15,25,.97); backdrop-filter: blur(20px);
+  border-radius: 24px 24px 0 0; padding: 16px 20px 40px;
+}
+.nav-phase-lbl { font-size: 11px; color: rgba(255,255,255,.4); margin-bottom: 4px; }
+.nav-dest-name { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.nav-stats-row { display: flex; gap: 12px; margin-bottom: 14px; }
+.nav-stat { font-size: 14px; font-weight: 600; color: #00C896; }
+.nav-action {
+  width: 100%; background: #00C896; border: none; border-radius: 16px;
+  color: #fff; font-size: 16px; font-weight: 700; padding: 16px; cursor: pointer;
+}
+
+/* ══════════════════════════════════════════
+   통계 화면
+══════════════════════════════════════════ */
+#screen-stats {
+  background: #0f0f1a;
+  display: flex; flex-direction: column;
+}
+.stats-header {
+  padding: 54px 20px 16px;
+  background: #0f0f1a;
+}
+.stats-header h2 { font-size: 22px; font-weight: 800; color: #fff; }
+.stats-scroll { flex: 1; overflow-y: auto; padding: 0 20px 100px; }
+.stats-scroll::-webkit-scrollbar { display: none; }
+
+.gap-hero {
+  background: linear-gradient(135deg, #1a0a0a, #2d0f0f);
+  border: 1px solid rgba(255,59,48,.3); border-radius: 20px;
+  padding: 24px; text-align: center; margin-bottom: 16px;
+}
+.gap-hero-lbl { font-size: 12px; color: rgba(255,107,107,.7); margin-bottom: 8px; }
+.gap-hero-val { font-size: 42px; font-weight: 900; color: #ff3b30; }
+.gap-hero-sub { font-size: 12px; color: rgba(255,255,255,.4); margin-top: 6px; }
+
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.stat-card {
+  background: rgba(255,255,255,.05); border-radius: 16px; padding: 16px;
+}
+.sc-val { font-size: 22px; font-weight: 700; color: #00C896; }
+.sc-lbl { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 4px; }
+
+.report-btn {
+  width: 100%; background: rgba(255,204,0,.1); border: 1px solid rgba(255,204,0,.3);
+  border-radius: 16px; color: #ffcc00; font-size: 14px; font-weight: 700;
+  padding: 16px; cursor: pointer; margin-bottom: 12px;
+}
+.legal-txt { font-size: 10px; color: rgba(255,255,255,.2); text-align: center; line-height: 1.8; }
+
+/* ── 토스트 ── */
+.toast {
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(10px);
+  background: rgba(30,30,50,.97); backdrop-filter: blur(10px);
+  border-radius: 20px; padding: 11px 22px;
+  font-size: 13px; font-weight: 500; color: #fff;
+  z-index: 9999; opacity: 0; transition: opacity .25s, transform .25s;
+  white-space: nowrap; max-width: calc(100% - 40px); text-align: center;
+  border: .5px solid rgba(255,255,255,.12);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
 </head>
 <body>
 
-<div id="header">
-  <div class="logo">🚛 <span>LastMile</span> Labor</div>
-  <div style="font-size:11px;color:#8b949e;margin-left:8px">배송 노동 가시화 · ABM</div>
-  <div id="conn-lbl" style="margin-left:auto;font-size:10px;color:#8b949e">연결 중...</div>
-  <div class="conn-dot" id="conn-dot"></div>
+<!-- 상태바 -->
+<div class="status-bar">
+  <span class="status-bar-time" id="sb-time">9:41</span>
+  <div class="status-bar-icons">
+    <span>●●●</span><span>WiFi</span><span>🔋</span>
+  </div>
 </div>
 
-<div id="main">
+<div id="screens">
 
-  <!-- 지도 -->
-  <div style="position:relative;overflow:hidden">
-    <div id="map"></div>
-    <div id="status-bar" style="color:#8b949e">▶ 파라미터 탭에서 설정 후 실행하세요</div>
-  </div>
+  <!-- ── 대기 화면 ── -->
+  <div id="screen-standby" class="screen active">
+    <div id="tmap-wrap"></div>
 
-  <!-- 오른쪽 패널 -->
-  <div id="panel">
-    <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('status')">📊 현황</button>
-      <button class="tab-btn"        onclick="switchTab('params')">⚙️ 파라미터</button>
-      <button class="tab-btn"        onclick="switchTab('env')">🗺️ 환경</button>
+    <div class="app-topbar">
+      <div class="online-toggle">
+        <div class="toggle-dot"></div>
+        <span class="toggle-label">신규배차 ON</span>
+      </div>
+      <div class="earnings-pill" id="today-earn">오늘 0원</div>
     </div>
 
-    <!-- 현황 탭 -->
-    <div class="tab-pane active" id="tab-status">
-      <div class="metric-grid">
-        <div class="metric"><div class="mv" id="m-active" style="color:#238636">0</div><div class="ml">🚛 가동 중</div></div>
-        <div class="metric"><div class="mv" id="m-over"   style="color:#f85149">0</div><div class="ml">⛔ 시간초과</div></div>
-        <div class="metric"><div class="mv" id="m-done"   style="color:#388bfd">0</div><div class="ml">📦 완료</div></div>
-        <div class="metric"><div class="mv" id="m-walk"   style="color:#f0883e">0</div><div class="ml">🚶 도보</div></div>
-      </div>
-      <div>
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:#8b949e">
-          <span>전체 진행률</span><span id="pct-lbl">0%</span>
-        </div>
-        <div style="background:#21262d;border-radius:3px;height:5px;margin:4px 0">
-          <div id="prog-bar" style="width:0%;background:#388bfd;border-radius:3px;height:5px;transition:width .3s"></div>
-        </div>
-      </div>
-      <div id="alert-box" style="display:none;background:#130a0a;border:0.5px solid #f85149;border-radius:6px;padding:6px 9px;font-size:11px;color:#f85149">
-        ⚠️ <span id="alert-txt"></span>
-      </div>
-      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin:4px 0 3px">배달원 현황</div>
-      <div id="driver-list"><div style="color:#8b949e;font-size:11px;text-align:center;margin-top:16px">실행 후 표시됩니다</div></div>
-    </div>
-
-    <!-- 파라미터 탭 -->
-    <div class="tab-pane" id="tab-params">
-      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin-bottom:8px">DRIVER AGENT</div>
-
-      <div style="margin-bottom:12px">
-        <div style="font-size:11px;color:#c9d1d9;margin-bottom:5px">법정 최대 근무</div>
-        <select id="p-hours" onchange="onParamChange()" style="width:100%;background:#21262d;border:0.5px solid #30363d;border-radius:6px;color:#e6edf3;font-size:12px;padding:7px 8px">
-          <option value="8">8시간</option>
-          <option value="12">12시간</option>
-        </select>
-      </div>
-
-      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin-bottom:8px">COMPANY AGENT</div>
-
-      <!-- 기사 수: 슬라이더 + 숫자 입력 -->
-      <div style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#c9d1d9;margin-bottom:5px">
-          <span>기사 수</span>
-          <input type="number" id="n-drivers" value="8" min="3" max="12"
-            style="width:56px;background:#21262d;border:0.5px solid #30363d;border-radius:5px;color:#388bfd;font-size:12px;font-weight:500;text-align:center;padding:3px 4px">
-        </div>
-        <input type="range" id="p-drivers" min="3" max="12" value="8">
-      </div>
-
-      <!-- 물동량: 슬라이더 + 숫자 입력 -->
-      <div style="margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#c9d1d9;margin-bottom:5px">
-          <span>총 물동량</span>
-          <input type="number" id="n-vol" value="120" min="40" max="200" step="10"
-            style="width:56px;background:#21262d;border:0.5px solid #30363d;border-radius:5px;color:#388bfd;font-size:12px;font-weight:500;text-align:center;padding:3px 4px">
-        </div>
-        <input type="range" id="p-vol" min="40" max="200" value="120" step="10">
-      </div>
-
-      <!-- 피로도 인포 -->
-      <div style="background:#0d1117;border:0.5px solid #30363d;border-radius:7px;padding:9px 11px;font-size:10px;color:#8b949e;line-height:2.1;margin-bottom:14px">
-        근무 0~3h → 건당 <span style="color:#238636;font-weight:500">3분</span><br>
-        근무 3~6h → 건당 <span style="color:#d29922;font-weight:500">5분</span><br>
-        근무 6h+  → 건당 <span style="color:#f85149;font-weight:500">7분</span><br>
-        경사 15°+ → <span style="color:#d29922">×2배</span> &nbsp;/&nbsp; 경사 25°+ → <span style="color:#f85149">×3배</span>
-      </div>
-
-      <div style="margin-top:auto">
-        <button id="btn-run" onclick="onRun()"
-          style="width:100%;padding:9px;background:#1f6feb;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;margin-bottom:6px;transition:background .15s">
-          ▶ 실행
-        </button>
-        <button onclick="onReset()"
-          style="width:100%;padding:8px;background:#21262d;color:#8b949e;border:0.5px solid #30363d;border-radius:7px;font-size:12px;cursor:pointer">
-          ↺ 초기화
-        </button>
-      </div>
-    </div>
-
-    <!-- 환경 탭 -->
-    <div class="tab-pane" id="tab-env">
-      <!-- GeoJSON 업로드 -->
-      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin-bottom:6px">GeoJSON 업로드</div>
-      <div style="font-size:10px;color:#8b949e;line-height:1.7;margin-bottom:8px">
-        GeoJSON 업로드 시 자동 전처리 → 동별 도로 데이터 생성
-      </div>
-
-      <!-- 업로드 드롭존 -->
-      <input type="file" id="geojson-input" accept=".geojson,.json"
-        style="display:none" onchange="onGeoJsonUpload(this)">
-      <div id="upload-zone"
-        onclick="document.getElementById('geojson-input').click()"
-        style="display:block;background:#0d1117;border:0.5px dashed #30363d;border-radius:8px;
-               padding:16px;text-align:center;cursor:pointer;margin-bottom:8px;transition:border-color .15s"
-        onmouseenter="this.style.borderColor='#388bfd'"
-        onmouseleave="this.style.borderColor='#30363d'">
-        <div style="font-size:22px;margin-bottom:6px">📂</div>
-        <div style="font-size:11px;color:#c9d1d9;margin-bottom:3px">클릭하여 GeoJSON 선택</div>
-        <div style="font-size:10px;color:#8b949e">EPSG:5179 좌표계 · .geojson / .json</div>
-      </div>
-
-      <!-- 전처리 진행 상태 -->
-      <div id="prep-status" style="display:none;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:#8b949e;margin-bottom:4px">
-          <span id="prep-msg">전처리 중...</span>
-          <span id="prep-pct">0%</span>
-        </div>
-        <div style="background:#21262d;border-radius:3px;height:4px">
-          <div id="prep-bar" style="width:0%;background:#388bfd;border-radius:3px;height:4px;transition:width .3s"></div>
-        </div>
-      </div>
-
-      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin-bottom:6px">구역 선택</div>
-      <div style="font-size:10px;color:#8b949e;line-height:1.7;margin-bottom:8px">
-        구역 선택 시 해당 동으로 지도 이동 + 출·도착지 재랜덤 세팅
-      </div>
-
-      <select id="zone-select" onchange="onZoneChange()"
-        style="width:100%;background:#21262d;border:0.5px solid #30363d;border-radius:6px;color:#e6edf3;font-size:12px;padding:7px 8px;margin-bottom:10px">
-        <option value="" disabled>GeoJSON 업로드 후 선택 가능</option>
+    <div class="dong-pill">
+      <select id="dong-select" onchange="onDongChange()">
+        <option value="난곡동">📍 난곡동 (난배송 구역)</option>
+        <option value="신림동">📍 신림동</option>
       </select>
+    </div>
 
-      <div id="region-name" style="font-size:11px;color:#388bfd;margin-bottom:8px;font-weight:500"></div>
+    <button class="call-sim-btn" onclick="simulateCall()">🔔 콜 시뮬레이션</button>
 
-      <div id="env-stats" style="background:#0d1117;border:0.5px solid #30363d;border-radius:7px;padding:9px 10px;margin-bottom:10px">
-        <div style="color:#8b949e;font-size:11px">GeoJSON 업로드 후 표시됩니다</div>
-      </div>
+    <!-- 콜 오버레이 (지도 위) -->
+    <div id="call-overlay">
+      <div class="call-mini-card" id="call-mini-card">
+        <div class="drag-handle"></div>
 
-      <div style="background:#0d1117;border:0.5px solid #30363d;border-radius:7px;padding:9px 11px;font-size:10px;color:#8b949e;line-height:2.1">
-        폭 &gt; 2m → 🚛 트럭 운행<br>
-        폭 ≤ 2m → 🚶 도보 강제전환<br>
-        경사 15°+ → ⏱ ×2배 &nbsp;/&nbsp; 경사 25°+ → ⏱ ×3배
-      </div>
+        <!-- 헤더 -->
+        <div class="call-timer-row">
+          <div class="call-new-badge">
+            <span class="bell-icon">🔔</span>
+            <span>신규 배차 요청</span>
+            <span class="hard-badge" id="hard-badge" style="display:none">난배송</span>
+          </div>
+          <div class="timer-ring">
+            <svg viewBox="0 0 44 44">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/>
+              <circle id="t-arc" cx="22" cy="22" r="18" fill="none" stroke="#00C896" stroke-width="3"
+                stroke-dasharray="113 113" stroke-dashoffset="0"
+                stroke-linecap="round" transform="rotate(-90 22 22)"/>
+            </svg>
+            <div class="timer-ring-num" id="t-num">30</div>
+          </div>
+        </div>
 
-      <div style="font-size:10px;color:#8b949e;font-weight:500;letter-spacing:.05em;margin:10px 0 5px">도로 범례</div>
-      <div style="font-size:10px;color:#8b949e;line-height:2.1">
-        <span style="color:#238636">━</span> 평지 (경사 &lt;15°)<br>
-        <span style="color:#d29922">━</span> 경사 15~25°<br>
-        <span style="color:#f85149">━</span> 경사 25°+ 급경사<br>
-        <span style="color:#555">╌</span> 협로 (폭 ≤2m)
+        <!-- 픽업/배달 포인트 칩 -->
+        <div class="points-row">
+          <div class="point-chip" id="chip-store" onclick="toggleDetail('store')">
+            <div class="chip-label">🏪 픽업</div>
+            <div class="chip-name" id="chip-store-name">—</div>
+            <div class="chip-dist" id="chip-store-dist">—</div>
+          </div>
+          <div class="point-chip" id="chip-dest" onclick="toggleDetail('dest')">
+            <div class="chip-label">📦 배달</div>
+            <div class="chip-name" id="chip-dest-name">—</div>
+            <div class="chip-dist" id="chip-dest-dist">—</div>
+          </div>
+        </div>
+
+        <!-- 세부 정보 패널 (탭 시 열림) -->
+        <div class="detail-panel closed" id="detail-panel">
+          <!-- 앱예측 vs 실제 -->
+          <div class="detail-compare">
+            <div class="dc-item">
+              <div class="dc-lbl">앱 예측</div>
+              <div class="dc-val gray" id="d-tmap-min">—분</div>
+              <div class="dc-sub" id="d-tmap-dist">—km</div>
+            </div>
+            <div class="detail-arrow">→</div>
+            <div class="dc-item real">
+              <div class="dc-lbl">실제 예상</div>
+              <div class="dc-val teal" id="d-real-min">—분</div>
+              <div class="dc-sub" id="d-real-dist">협로 도보 포함</div>
+            </div>
+          </div>
+          <!-- 지형 경고 -->
+          <div id="warn-list"></div>
+        </div>
+
+        <!-- 배달료 요약 -->
+        <div class="fare-summary-row">
+          <div>
+            <div class="fare-total-label">안전 배달료</div>
+            <div class="fare-platform-val" id="fare-plat">앱 제시 —원</div>
+          </div>
+          <div class="fare-total-val" id="fare-safe">—원</div>
+        </div>
+
+        <!-- 버튼 -->
+        <div class="btn-row">
+          <button class="btn-reject" onclick="rejectCall()">거절</button>
+          <button class="btn-accept" onclick="acceptCall()">
+            수락 · <span id="btn-fare">—원</span>
+          </button>
+        </div>
       </div>
     </div>
 
+    <!-- 하단 탭 -->
+    <div class="bottom-tab">
+      <button class="tab-item active"><span class="tab-icon">🛵</span>배달</button>
+      <button class="tab-item" onclick="goStats()"><span class="tab-icon">📊</span>수입</button>
+      <button class="tab-item"><span class="tab-icon">👤</span>내 정보</button>
+    </div>
   </div>
+
+  <!-- ── 내비 화면 ── -->
+  <div id="screen-nav" class="screen">
+    <div id="nav-map-wrap"></div>
+    <div class="nav-bottom">
+      <div class="nav-phase-lbl" id="nav-phase">📍 매장으로 이동</div>
+      <div class="nav-dest-name" id="nav-dest">—</div>
+      <div class="nav-stats-row">
+        <span class="nav-stat" id="nav-dist">—</span>
+        <span class="nav-stat" id="nav-eta">약 —분</span>
+      </div>
+      <button class="nav-action" id="nav-action-btn" onclick="onNavAction()">
+        📦 픽업 완료
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 통계 화면 ── -->
+  <div id="screen-stats" class="screen">
+    <div class="stats-header">
+      <button style="background:none;border:none;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;margin-bottom:8px" onclick="showScreen('standby')">← 돌아가기</button>
+      <h2>이달 배달 현황</h2>
+    </div>
+    <div class="stats-scroll">
+      <div class="gap-hero">
+        <div class="gap-hero-lbl">미반영 노동 금액</div>
+        <div class="gap-hero-val" id="s-gap">-74,800원</div>
+        <div class="gap-hero-sub">플랫폼이 지급하지 않은 험지 초과 노동</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="sc-val" id="s-calls">47건</div><div class="sc-lbl">총 배달</div></div>
+        <div class="stat-card"><div class="sc-val" id="s-walk">41.2km</div><div class="sc-lbl">도보 구간</div></div>
+        <div class="stat-card"><div class="sc-val" id="s-plat">188,000원</div><div class="sc-lbl">플랫폼 지급</div></div>
+        <div class="stat-card"><div class="sc-val" id="s-safe">262,800원</div><div class="sc-lbl">안전 배달료 기준</div></div>
+      </div>
+      <button class="report-btn" onclick="downloadReport()">📋 이달 미지급 신고서 다운로드</button>
+      <div class="legal-txt">화물자동차 안전운임제 방식 준용<br>최저임금법 제6조 기반 초과노동 산정</div>
+    </div>
+  </div>
+
 </div>
 
-<script src="/static/app.js"></script>
+<!-- JS 파일 먼저 로드 -->
+<script src="/static/rider/screens/standby.js"></script>
+<script src="/static/rider/screens/call_popup.js"></script>
+<script src="/static/rider/screens/navigation.js"></script>
+<script src="/static/rider/screens/summary.js"></script>
+<script src="/static/rider/app.js"></script>
+
+<!-- TMap SDK: 마지막에 로드, 완료되면 initTmap() 자동 호출 -->
+<!-- ★ YOUR_TMAP_API_KEY 를 실제 발급받은 키로 교체하세요 -->
+<script>
+  (function() {
+    var script = document.createElement('script');
+    script.src = 'https://apis.openapi.sk.com/tmap/jsv2?version=1&appKey=3zo6yeSBU73BF5kAoTvaJ5UtFw4S6jBI7Nk6TVex';
+    script.onload  = function() { if (typeof initTmap === 'function') initTmap(); };
+    script.onerror = function() { console.warn('[TMap] SDK 로드 실패 — API 키 확인 필요'); };
+    document.body.appendChild(script);
+  })();
+</script>
 </body>
 </html>

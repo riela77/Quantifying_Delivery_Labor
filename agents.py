@@ -3,7 +3,6 @@ agents.py - 배달 시뮬레이션 에이전트 (Mesa-Geo GeoAgent 기반)
 
 HouseAgent     : 배송 목적지
 TruckWalkAgent : 트럭+도보 배달원
-MotoAgent      : 이륜차 배달원
 """
 
 import random
@@ -11,27 +10,22 @@ from mesa_geo import GeoAgent
 from shapely.geometry import Point
 
 # ── 속도/비용 상수 ────────────────────────────────────────────────
-TRUCK_SPEED_KMH   = 25.0
-MOTO_SPEED_KMH    = 30.0
+TRUCK_SPEED_KMH   = 60.0
 WALK_SPEED_KMH    = 4.0
 TRUCK_COST_PER_KM = 800
-MOTO_COST_PER_KM  = 400
 
-STEP_MIN         = 1.0   # 1 step = 1분 (시뮬레이션 시간 단위)
-STEEP_THRESHOLD  = 15.0  # 험지(경사도) 기준 — 15도 이상이면 험지 카운트
+STEP_MIN        = 0.25   # 1 step = 15초 (4배 세분화)
+STEEP_THRESHOLD = 15.0   # 험지 기준 (15도 이상)
 
 
 def walk_speed(slope_deg=0.0):
     return max(1.5, WALK_SPEED_KMH - abs(slope_deg) * 0.3)
 
-def moto_speed(slope_deg=0.0):
-    return max(10.0, MOTO_SPEED_KMH - abs(slope_deg) * 0.5)
-
 def travel_time_min(dist_m, speed_kmh):
     return (dist_m / 1000) / speed_kmh * 60
 
 def speed_to_deg_per_step(speed_kmh):
-    """km/h → step당 이동 도(degree). 1step=1분, 1도≈111km"""
+    """km/h → step당 이동 도(degree). 1도 ≈ 111km"""
     return speed_kmh * STEP_MIN / 60 / 111.0
 
 def route_dist_m(route):
@@ -76,13 +70,12 @@ class TruckWalkAgent(GeoAgent):
         self.current_slope    = 0.0
         self.park_pos         = None
 
-        # ── 로그/분석용 추가 속성 ─────────────────────────────────
-        self.carried_kg        = 0.0   # 현재 도보 구간에서 들고 있는 화물 무게(kg)
-        self.steep_crossings   = 0     # 험지(STEEP_THRESHOLD° 이상) 돌파 횟수
-        self._was_steep        = False  # 이전 step 험지 여부 (연속 카운트 방지)
-        self.cumul_walk_m      = 0.0   # 누적 도보 이동 거리(m) — step마다 갱신
-        self.cumul_truck_m     = 0.0   # 누적 트럭 이동 거리(m)
-        self.elapsed_steps     = 0     # 총 경과 step 수
+        self.carried_kg       = 0.0
+        self.steep_crossings  = 0
+        self._was_steep       = False
+        self.cumul_walk_m     = 0.0
+        self.cumul_truck_m    = 0.0
+        self.elapsed_steps    = 0
 
     def set_segments(self, segments):
         self.segments = segments
@@ -101,8 +94,8 @@ class TruckWalkAgent(GeoAgent):
 
     def _load_segment(self, idx):
         if idx >= len(self.segments):
-            self.phase    = "done"
-            self.atype    = "done"
+            self.phase      = "done"
+            self.atype      = "done"
             self.carried_kg = 0.0
             return
         self.house_idx       = idx
@@ -112,15 +105,14 @@ class TruckWalkAgent(GeoAgent):
         self.atype           = "truck"
         self.route_idx       = 0
         self.current_route   = self.current_segment["truck"]
-        self.carried_kg      = 0.0  # 트럭 이동 중엔 직접 들지 않음
+        self.carried_kg      = 0.0
 
     def _enter_walk(self):
-        """truck → walk 전환 시 carried_kg 설정"""
-        self.phase          = "walk"
-        self.atype          = "walk"
-        self.route_idx      = 0
-        self.current_route  = self.current_segment["walk"]
-        self.carried_kg     = self.current_segment["house"].pkg_kg  # 이 건 화물 무게
+        self.phase         = "walk"
+        self.atype         = "walk"
+        self.route_idx     = 0
+        self.current_route = self.current_segment["walk"]
+        self.carried_kg    = self.current_segment["house"].pkg_kg
 
     def step(self):
         if self.phase in ("idle", "done"):
@@ -140,132 +132,56 @@ class TruckWalkAgent(GeoAgent):
                 self._load_segment(self.house_idx + 1)
             return
 
+        # 현재 스텝 속도 계산
         if self.phase == "walk":
             slopes = self.current_segment.get("slope_walk", [])
             si     = min(self.route_idx, len(slopes) - 1) if slopes else 0
             slope  = slopes[si] if slopes else 0.0
             spd    = speed_to_deg_per_step(walk_speed(slope))
         else:
-            slope  = 0.0
-            spd    = speed_to_deg_per_step(TRUCK_SPEED_KMH)
+            slope = 0.0
+            spd   = speed_to_deg_per_step(TRUCK_SPEED_KMH)
 
         self.current_slope = slope
 
-        # ── 험지 돌파 카운터 ──────────────────────────────────────
         is_steep = (abs(slope) >= STEEP_THRESHOLD and self.phase == "walk")
         if is_steep and not self._was_steep:
             self.steep_crossings += 1
         self._was_steep = is_steep
 
-        tlon, tlat = route[self.route_idx]
-        cx, cy     = self.geometry.x, self.geometry.y
-        dx, dy     = tlon - cx, tlat - cy
-        dist       = (dx**2 + dy**2) ** 0.5
+        # ── 매 스텝 정확히 spd만큼 경로를 따라 이동 ──────────────
+        # (포인트 간격이 넓어도 건너뛰지 않고 부드럽게 전진)
+        remaining = spd
+        moved_deg = 0.0
 
-        if dist < spd:
-            moved_deg       = dist
-            self.geometry   = Point(tlon, tlat)
-            self.route_idx  += 1
-        else:
-            moved_deg       = spd
-            ratio           = spd / dist
-            self.geometry   = Point(cx + dx * ratio, cy + dy * ratio)
+        while remaining > 0 and self.route_idx < len(route):
+            tlon, tlat = route[self.route_idx]
+            cx, cy     = self.geometry.x, self.geometry.y
+            dx, dy     = tlon - cx, tlat - cy
+            dist       = (dx**2 + dy**2) ** 0.5
 
-        # 이동 거리 누적 (도 → m 환산: 1도 ≈ 111,000m)
+            if dist == 0:
+                self.route_idx += 1
+                continue
+
+            if dist <= remaining:
+                # 이 포인트까지 도달 후 남은 거리로 계속 진행
+                self.geometry  = Point(tlon, tlat)
+                self.route_idx += 1
+                moved_deg  += dist
+                remaining  -= dist
+                # 경로 끝이면 중단
+                if self.route_idx >= len(route):
+                    break
+            else:
+                # remaining만큼만 전진
+                ratio         = remaining / dist
+                self.geometry = Point(cx + dx * ratio, cy + dy * ratio)
+                moved_deg    += remaining
+                remaining     = 0
+
         moved_m = moved_deg * 111000
         if self.phase == "walk":
             self.cumul_walk_m  += moved_m
         else:
             self.cumul_truck_m += moved_m
-
-
-class MotoAgent(GeoAgent):
-    """이륜차 배달원"""
-
-    def __init__(self, model, geometry, crs):
-        super().__init__(model, geometry, crs)
-        self.atype            = "moto"
-        self.phase            = "idle"
-        self.route_idx        = 0
-        self.house_idx        = 0
-        self.segments         = []
-        self.current_route    = []
-        self.total_time_min   = 0.0
-        self.total_cost_won   = 0.0
-        self.dist_m           = 0.0
-        self.delivered_kg     = 0.0
-        self.delivered_count  = 0
-        self.current_slope    = 0.0
-
-        # ── 로그/분석용 추가 속성 ─────────────────────────────────
-        self.carried_kg       = 0.0   # 이륜차는 항상 화물을 싣고 이동
-        self.steep_crossings  = 0
-        self._was_steep       = False
-        self.cumul_dist_m     = 0.0
-        self.elapsed_steps    = 0
-
-    def set_segments(self, segments):
-        self.segments = segments
-        for seg in segments:
-            d = route_dist_m(seg["route"])
-            avg_slope = (sum(seg["slope_list"]) / len(seg["slope_list"])
-                         if seg["slope_list"] else 0.0)
-            self.dist_m         += d
-            self.total_time_min += travel_time_min(d, moto_speed(avg_slope))
-            self.total_cost_won += (d / 1000) * MOTO_COST_PER_KM
-            self.delivered_kg   += seg["house"].pkg_kg
-        self._load_segment(0)
-
-    def _load_segment(self, idx):
-        if idx >= len(self.segments):
-            self.phase      = "done"
-            self.atype      = "done"
-            self.carried_kg = 0.0
-            return
-        self.house_idx     = idx
-        self.current_route = self.segments[idx]["route"]
-        self.route_idx     = 0
-        self.phase         = "riding"
-        self.atype         = "moto"
-        self.carried_kg    = self.segments[idx]["house"].pkg_kg
-
-    def step(self):
-        if self.phase in ("idle", "done"):
-            return
-
-        self.elapsed_steps += 1
-
-        if self.route_idx >= len(self.current_route):
-            self.segments[self.house_idx]["house"].visited = True
-            self.segments[self.house_idx]["house"].atype   = "visited"
-            self.delivered_count += 1
-            self._load_segment(self.house_idx + 1)
-            return
-
-        slopes = self.segments[self.house_idx].get("slope_list", [])
-        si     = min(self.route_idx, len(slopes) - 1) if slopes else 0
-        slope  = slopes[si] if slopes else 0.0
-        self.current_slope = slope
-        spd = speed_to_deg_per_step(moto_speed(slope))
-
-        # ── 험지 돌파 카운터 ──────────────────────────────────────
-        is_steep = abs(slope) >= STEEP_THRESHOLD
-        if is_steep and not self._was_steep:
-            self.steep_crossings += 1
-        self._was_steep = is_steep
-
-        tlon, tlat = self.current_route[self.route_idx]
-        cx, cy     = self.geometry.x, self.geometry.y
-        dx, dy     = tlon - cx, tlat - cy
-        dist       = (dx**2 + dy**2) ** 0.5
-
-        if dist < spd:
-            moved_deg      = dist
-            self.geometry  = Point(tlon, tlat)
-            self.route_idx += 1
-        else:
-            moved_deg      = spd
-            ratio          = spd / dist
-            self.geometry  = Point(cx + dx * ratio, cy + dy * ratio)
-
-        self.cumul_dist_m += moved_deg * 111000

@@ -1,4 +1,5 @@
-<img width="1254" height="1254" alt="캡스톤 디자인 로고" src="https://github.com/user-attachments/assets/e819cc15-dbe1-4227-ab5a-a077fd75e7ab" />
+<img width="400" alt="캡스톤 디자인 로고" src="https://github.com/user-attachments/assets/e819cc15-dbe1-4227-ab5a-a077fd75e7ab" />
+
 # QuantifyingDeliveryLabor
 
 **지형 특성에 따른 배송 노동 환경 정량화 시뮬레이터**
